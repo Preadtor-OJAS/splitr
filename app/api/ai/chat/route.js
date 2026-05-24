@@ -26,10 +26,10 @@ Your role is to:
 ${
   userContext
     ? `User's current financial context:
-- Total Balance: $${userContext.totalBalance?.toFixed(2) ?? "N/A"}
-- Amount others owe them: $${userContext.youAreOwed?.toFixed(2) ?? "N/A"}
-- Amount they owe others: $${userContext.youOwe?.toFixed(2) ?? "N/A"}
-- Total spent all time: $${userContext.totalSpentAllTime?.toFixed(2) ?? "N/A"}`
+- Total Balance: ₹${userContext.totalBalance?.toFixed(2) ?? "N/A"}
+- Amount others owe them: ₹${userContext.youAreOwed?.toFixed(2) ?? "N/A"}
+- Amount they owe others: ₹${userContext.youOwe?.toFixed(2) ?? "N/A"}
+- Total spent all time: ₹${userContext.totalSpentAllTime?.toFixed(2) ?? "N/A"}`
     : "No financial data provided yet."
 }
 

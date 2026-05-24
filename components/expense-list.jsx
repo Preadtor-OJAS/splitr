@@ -175,7 +175,7 @@ export function ExpenseList({
                           </AvatarFallback>
                         </Avatar>
                         <span>
-                          {isCurrentUser ? "You" : splitUser.name}: $
+                          {isCurrentUser ? "You" : splitUser.name}: ₹
                           {split.amount.toFixed(2)}
                         </span>
                       </Badge>

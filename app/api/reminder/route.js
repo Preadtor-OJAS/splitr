@@ -60,7 +60,7 @@ export async function POST(req) {
               <!-- Amount Box -->
               <div style="background:#f0fdf4;border:2px solid #bbf7d0;border-radius:10px;padding:24px;text-align:center;margin-bottom:28px;">
                 <p style="margin:0 0 6px;color:#16a34a;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Amount Due</p>
-                <p style="margin:0;color:#15803d;font-size:40px;font-weight:800;">$${Number(amount).toFixed(2)}</p>
+                <p style="margin:0;color:#15803d;font-size:40px;font-weight:800;">₹${Number(amount).toFixed(2)}</p>
                 <p style="margin:6px 0 0;color:#6b7280;font-size:13px;">owed to ${fromName || "your friend"}</p>
               </div>
 
@@ -99,7 +99,7 @@ export async function POST(req) {
     const result = await resend.emails.send({
       from: "Splitr <onboarding@resend.dev>",
       to: toEmail,
-      subject: `💸 Payment Reminder: $${Number(amount).toFixed(2)} owed to ${fromName || "your friend"}`,
+      subject: `💸 Payment Reminder: ₹${Number(amount).toFixed(2)} owed to ${fromName || "your friend"}`,
       html,
     });
 

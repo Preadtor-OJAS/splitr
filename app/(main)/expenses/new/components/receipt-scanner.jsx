@@ -193,7 +193,7 @@ export function ReceiptScanner({ onReceiptScanned }) {
                   <div>
                     <span className="text-muted-foreground">Category</span>
                     <p className="font-medium capitalize">
-                      {scannedData.category?.replace(/([A-Z])/g, " $1").trim() || "Other"}
+                      {scannedData.category?.replace(/([A-Z])/g, " ₹1").trim() || "Other"}
                     </p>
                   </div>
                   {scannedData.date && (
