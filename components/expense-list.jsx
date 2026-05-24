@@ -115,7 +115,7 @@ export function ExpenseList({
                 <div className="flex items-center gap-2">
                   <div className="text-right">
                     <div className="font-medium">
-                      ${expense.amount.toFixed(2)}
+                      ₹{expense.amount.toFixed(2)}
                     </div>
                     {isGroupExpense ? (
                       <Badge variant="outline" className="mt-1">

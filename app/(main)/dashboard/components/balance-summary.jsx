@@ -176,7 +176,7 @@ export function BalanceSummary({ balances }) {
                 </Link>
                 <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                   <span className="font-medium text-green-600 text-sm">
-                    ${item.amount.toFixed(2)}
+                    ₹{item.amount.toFixed(2)}
                   </span>
                   <ReminderButton item={item} currentUser={currentUser} />
                 </div>
@@ -207,7 +207,7 @@ export function BalanceSummary({ balances }) {
                   <span className="text-sm">{item.name}</span>
                 </div>
                 <span className="font-medium text-red-600 text-sm">
-                  ${item.amount.toFixed(2)}
+                  ₹{item.amount.toFixed(2)}
                 </span>
               </Link>
             ))}

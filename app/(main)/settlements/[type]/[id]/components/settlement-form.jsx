@@ -153,7 +153,7 @@ export default function SettlementForm({ entityType, entityData, onSuccess }) {
                 <span className="font-medium">{otherUser.name}</span> owes you
               </p>
               <span className="text-xl font-bold text-green-600">
-                ${netBalance.toFixed(2)}
+                ₹{netBalance.toFixed(2)}
               </span>
             </div>
           ) : (
@@ -162,7 +162,7 @@ export default function SettlementForm({ entityType, entityData, onSuccess }) {
                 You owe <span className="font-medium">{otherUser.name}</span>
               </p>
               <span className="text-xl font-bold text-red-600">
-                ${Math.abs(netBalance).toFixed(2)}
+                ₹{Math.abs(netBalance).toFixed(2)}
               </span>
             </div>
           )}
