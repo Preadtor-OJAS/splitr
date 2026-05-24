@@ -187,7 +187,7 @@ export function ReceiptScanner({ onReceiptScanned }) {
                   <div>
                     <span className="text-muted-foreground">Total Amount</span>
                     <p className="font-medium text-green-700">
-                      ${Number(scannedData.amount || 0).toFixed(2)}
+                      ₹{Number(scannedData.amount || 0).toFixed(2)}
                     </p>
                   </div>
                   <div>
@@ -210,7 +210,7 @@ export function ReceiptScanner({ onReceiptScanned }) {
                       {scannedData.items.slice(0, 5).map((item, i) => (
                         <li key={i} className="flex justify-between">
                           <span>{item.name}</span>
-                          <span className="font-medium">${Number(item.price || 0).toFixed(2)}</span>
+                          <span className="font-medium">₹{Number(item.price || 0).toFixed(2)}</span>
                         </li>
                       ))}
                     </ul>

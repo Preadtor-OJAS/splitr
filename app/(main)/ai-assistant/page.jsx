@@ -175,15 +175,15 @@ export default function AiAssistantPage() {
         <div className="flex gap-3 mb-4 flex-shrink-0 flex-wrap">
           <div className="text-xs bg-green-50 border border-green-200 text-green-700 rounded-full px-3 py-1 flex items-center gap-1.5">
             <span className="font-medium">Balance:</span>
-            <span>${Math.abs(balances.totalBalance || 0).toFixed(2)}</span>
+            <span>₹{Math.abs(balances.totalBalance || 0).toFixed(2)}</span>
           </div>
           <div className="text-xs bg-blue-50 border border-blue-200 text-blue-700 rounded-full px-3 py-1 flex items-center gap-1.5">
             <span className="font-medium">Owed to you:</span>
-            <span>${(balances.youAreOwed || 0).toFixed(2)}</span>
+            <span>₹{(balances.youAreOwed || 0).toFixed(2)}</span>
           </div>
           <div className="text-xs bg-amber-50 border border-amber-200 text-amber-700 rounded-full px-3 py-1 flex items-center gap-1.5">
             <span className="font-medium">You owe:</span>
-            <span>${(balances.youOwe || 0).toFixed(2)}</span>
+            <span>₹{(balances.youOwe || 0).toFixed(2)}</span>
           </div>
           <div className="text-xs text-muted-foreground rounded-full px-3 py-1 bg-gray-100 border border-gray-200 flex items-center gap-1">
             <Bot className="h-3 w-3" />
