@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Button } from "./ui/button";
-import { LayoutDashboard } from "lucide-react";
+import { LayoutDashboard, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { useStoreUser } from "@/hooks/use-store-user";
@@ -57,6 +57,20 @@ export default function Header() {
               </Button>
               <Button variant="ghost" className="md:hidden w-10 h-10 p-0">
                 <LayoutDashboard className="h-4 w-4" />
+              </Button>
+            </Link>
+
+            <Link href="/ai-assistant">
+              <Button
+                variant="outline"
+                className="hidden md:inline-flex items-center gap-2 hover:text-purple-600 hover:border-purple-500 transition border-purple-300 text-purple-600"
+                id="ai-assistant-nav-btn"
+              >
+                <Sparkles className="h-4 w-4" />
+                AI Assistant
+              </Button>
+              <Button variant="ghost" className="md:hidden w-10 h-10 p-0 text-purple-600">
+                <Sparkles className="h-4 w-4" />
               </Button>
             </Link>
 

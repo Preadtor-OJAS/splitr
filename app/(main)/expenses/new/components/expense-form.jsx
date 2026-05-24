@@ -15,6 +15,7 @@ import { ParticipantSelector } from "./participant-selector";
 import { GroupSelector } from "./group-selector";
 import { CategorySelector } from "./category-selector";
 import { SplitSelector } from "./split-selector";
+import { ReceiptScanner } from "./receipt-scanner";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import {
@@ -151,8 +152,27 @@ export function ExpenseForm({ type = "individual", onSuccess }) {
 
   if (!currentUser) return null;
 
+  // Handle receipt scan results - auto-fill the form
+  const handleReceiptScanned = (data) => {
+    if (data.description) setValue("description", data.description);
+    if (data.amount) setValue("amount", String(data.amount));
+    if (data.category) setValue("category", data.category);
+    if (data.date) {
+      const parsed = new Date(data.date);
+      if (!isNaN(parsed.getTime())) {
+        setSelectedDate(parsed);
+        setValue("date", parsed);
+      }
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {/* AI Receipt Scanner */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">Fill manually or scan a receipt</p>
+        <ReceiptScanner onReceiptScanned={handleReceiptScanned} />
+      </div>
       <div className="space-y-4">
         {/* Description and amount */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

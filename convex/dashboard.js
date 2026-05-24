@@ -60,6 +60,7 @@ export const getUserBalances = query({
       const base = {
         userId: uid,
         name: counterpart?.name ?? "Unknown",
+        email: counterpart?.email ?? "",
         imageUrl: counterpart?.imageUrl,
         amount: Math.abs(net),
       };
