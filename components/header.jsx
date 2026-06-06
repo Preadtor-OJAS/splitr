@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "./ui/button";
-import { LayoutDashboard, Sparkles } from "lucide-react";
+import { LayoutDashboard, Sparkles, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { useStoreUser } from "@/hooks/use-store-user";
@@ -10,12 +10,17 @@ import { BarLoader } from "react-spinners";
 import { Authenticated, Unauthenticated } from "convex/react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { UpiSettingsModal } from "@/components/upi-settings-modal";
+import { NotificationBell } from "@/components/notification-bell";
+import { ChatInboxButton } from "@/components/chat-inbox-button";
 
 export default function Header() {
   const { isLoading } = useStoreUser();
   const path = usePathname();
+  const [upiModalOpen, setUpiModalOpen] = useState(false);
 
   return (
+    <>
     <header className="fixed top-0 w-full border-b bg-white/95 backdrop-blur z-50 supports-[backdrop-filter]:bg-white/60">
       <nav className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
@@ -74,6 +79,30 @@ export default function Header() {
               </Button>
             </Link>
 
+            <div className="flex items-center gap-1">
+              <ChatInboxButton />
+              <NotificationBell />
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden md:inline-flex items-center gap-1.5 text-green-700 border-green-400 hover:bg-green-50 hover:text-green-800 transition"
+              onClick={() => setUpiModalOpen(true)}
+              id="upi-settings-btn"
+            >
+              <Smartphone className="h-4 w-4" />
+              UPI
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden w-10 h-10 p-0 text-green-600"
+              onClick={() => setUpiModalOpen(true)}
+            >
+              <Smartphone className="h-4 w-4" />
+            </Button>
+
             <UserButton
               appearance={{
                 elements: {
@@ -84,6 +113,7 @@ export default function Header() {
               }}
               afterSignOutUrl="/"
             />
+            <UpiSettingsModal open={upiModalOpen} onClose={() => setUpiModalOpen(false)} />
           </Authenticated>
 
           <Unauthenticated>
@@ -101,5 +131,6 @@ export default function Header() {
       </nav>
       {isLoading && <BarLoader width={"100%"} color="#36d7b7" />}
     </header>
+    </>
   );
 }

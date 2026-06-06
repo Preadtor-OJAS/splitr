@@ -7,6 +7,7 @@ export default defineSchema({
     email: v.string(),
     tokenIdentifier: v.string(),
     imageUrl: v.optional(v.string()),
+    upiId: v.optional(v.string()),
   })
     .index("by_token", ["tokenIdentifier"])
     .index("by_email", ["email"])
@@ -64,4 +65,56 @@ export default defineSchema({
       })
     ),
   }),
+
+  // In-app Notifications
+  notifications: defineTable({
+    userId: v.id("users"),        // who receives this notification
+    type: v.string(),             // "settlement_received" | "settlement_sent" | "reminder"
+    title: v.string(),
+    message: v.string(),
+    read: v.boolean(),
+    relatedSettlementId: v.optional(v.id("settlements")),
+    relatedUserId: v.optional(v.id("users")),  // the other party
+    amount: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_and_read", ["userId", "read"]),
+
+  // Chat messages between two users
+  messages: defineTable({
+    senderId: v.id("users"),
+    receiverId: v.id("users"),
+    content: v.string(),
+    read: v.boolean(),
+    createdAt: v.number(),
+    // Canonical "conversation key": smaller id + larger id joined by "_"
+    conversationKey: v.string(),
+  })
+    .index("by_conversation", ["conversationKey", "createdAt"])
+    .index("by_receiver_unread", ["receiverId", "read"])
+    .index("by_sender", ["senderId"]),
+
+  // Friendships
+  friendships: defineTable({
+    user1: v.id("users"), // Alphabetically smaller ID
+    user2: v.id("users"), // Alphabetically larger ID
+    status: v.string(), // "pending", "accepted"
+    requesterId: v.id("users"), // The user who initiated the request
+    updatedAt: v.number(),
+  })
+    .index("by_users", ["user1", "user2"])
+    .index("by_user1", ["user1"])
+    .index("by_user2", ["user2"])
+    .index("by_requester", ["requesterId"]),
+
+  // Blocks
+  blocks: defineTable({
+    blockerId: v.id("users"), // The user who blocked
+    blockedId: v.id("users"), // The user who got blocked
+    createdAt: v.number(),
+  })
+    .index("by_blocker", ["blockerId"])
+    .index("by_blocked", ["blockedId"])
+    .index("by_both", ["blockerId", "blockedId"]),
 });

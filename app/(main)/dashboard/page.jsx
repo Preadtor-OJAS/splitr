@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Users, CreditCard, ChevronRight } from "lucide-react";
+import { PlusCircle, Users, CreditCard, ChevronRight, History } from "lucide-react";
 import Link from "next/link";
 import { ExpenseSummary } from "./components/expense-summary";
 import { BalanceSummary } from "./components/balance-summary";
@@ -49,12 +49,20 @@ export default function Dashboard() {
         <>
           <div className="flex  justify-between flex-col sm:flex-row sm:items-center gap-4">
             <h1 className="text-5xl gradient-title">Dashboard</h1>
-            <Button asChild>
-              <Link href="/expenses/new">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add expense
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button asChild variant="outline">
+                <Link href="/transactions">
+                  <History className="mr-2 h-4 w-4" />
+                  History
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/expenses/new">
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add expense
+                </Link>
+              </Button>
+            </div>
           </div>
 
           {/* Balance overview cards */}

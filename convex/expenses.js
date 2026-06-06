@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
+import { internal, api } from "./_generated/api";
 
 // Create a new expense
 export const createExpense = mutation({
@@ -36,6 +36,24 @@ export const createExpense = mutation({
       );
       if (!isMember) {
         throw new Error("You are not a member of this group");
+      }
+    } else {
+      // Not in a group: Verify the creator is friends with everyone involved
+      const involvedUserIds = new Set(args.splits.map((s) => s.userId));
+      involvedUserIds.add(args.paidByUserId);
+      
+      for (const id of involvedUserIds) {
+        if (id === user._id) continue;
+        
+        const isFriend = await ctx.runQuery(api.friends.checkIsFriend, {
+          userId1: user._id,
+          userId2: id,
+        });
+        
+        if (!isFriend) {
+          const otherUser = await ctx.db.get(id);
+          throw new Error(`You must be friends with ${otherUser?.name || 'this user'} to add a direct expense with them.`);
+        }
       }
     }
 
@@ -76,18 +94,18 @@ export const getExpensesBetweenUsers = query({
     if (me._id === userId) throw new Error("Cannot query yourself");
 
     /* ───── 1. One-on-one expenses where either user is the payer ───── */
-    // Use the compound index (`paidByUserId`,`groupId`) with groupId = undefined
+    // Use the compound index (`paidByUserId`,`groupId`) without specifying groupId to get ALL expenses
     const myPaid = await ctx.db
       .query("expenses")
       .withIndex("by_user_and_group", (q) =>
-        q.eq("paidByUserId", me._id).eq("groupId", undefined)
+        q.eq("paidByUserId", me._id)
       )
       .collect();
 
     const theirPaid = await ctx.db
       .query("expenses")
       .withIndex("by_user_and_group", (q) =>
-        q.eq("paidByUserId", userId).eq("groupId", undefined)
+        q.eq("paidByUserId", userId)
       )
       .collect();
 
@@ -108,21 +126,18 @@ export const getExpensesBetweenUsers = query({
 
     expenses.sort((a, b) => b.date - a.date);
 
-    /* ───── 3. Settlements between the two of us (groupId = undefined) ─ */
+    /* ───── 3. Settlements between the two of us (across ALL groups) ─ */
     const settlements = await ctx.db
       .query("settlements")
       .filter((q) =>
-        q.and(
-          q.eq(q.field("groupId"), undefined),
-          q.or(
-            q.and(
-              q.eq(q.field("paidByUserId"), me._id),
-              q.eq(q.field("receivedByUserId"), userId)
-            ),
-            q.and(
-              q.eq(q.field("paidByUserId"), userId),
-              q.eq(q.field("receivedByUserId"), me._id)
-            )
+        q.or(
+          q.and(
+            q.eq(q.field("paidByUserId"), me._id),
+            q.eq(q.field("receivedByUserId"), userId)
+          ),
+          q.and(
+            q.eq(q.field("paidByUserId"), userId),
+            q.eq(q.field("receivedByUserId"), me._id)
           )
         )
       )

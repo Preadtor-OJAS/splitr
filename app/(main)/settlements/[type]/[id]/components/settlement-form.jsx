@@ -13,6 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
+import { UpiPaymentModal } from "@/components/upi-payment-modal";
+import { Smartphone } from "lucide-react";
 
 // Form schema validation
 const settlementSchema = z.object({
@@ -29,6 +31,21 @@ const settlementSchema = z.object({
 export default function SettlementForm({ entityType, entityData, onSuccess }) {
   const { data: currentUser } = useConvexQuery(api.users.getCurrentUser);
   const createSettlement = useConvexMutation(api.settlements.createSettlement);
+  const [upiModalOpen, setUpiModalOpen] = useState(false);
+
+  // For group settlements, we need to select a member (hoisted up for the query)
+  const [selectedGroupMemberId, setSelectedGroupMemberId] = useState(null);
+
+  // Fetch other user's UPI ID (for user-type settlements or selected group member)
+  const otherUserId =
+    entityType === "user" 
+      ? entityData?.counterpart?.userId 
+      : selectedGroupMemberId;
+
+  const { data: otherUserData } = useConvexQuery(
+    api.users.getUserById,
+    otherUserId ? { userId: otherUserId } : "skip"
+  );
 
   // Set up form with validation
   const {
@@ -130,8 +147,6 @@ export default function SettlementForm({ entityType, entityData, onSuccess }) {
     }
   };
 
-  // For group settlements, we need to select a member
-  const [selectedGroupMemberId, setSelectedGroupMemberId] = useState(null);
 
   if (!currentUser) return null;
 
@@ -219,7 +234,7 @@ export default function SettlementForm({ entityType, entityData, onSuccess }) {
             <span className="absolute left-3 top-2.5">₹</span>
             <Input
               id="amount"
-              placeholder="0.00"
+              placeholder={Math.abs(entityData.netBalance).toFixed(2)}
               type="number"
               step="0.01"
               min="0.01"
@@ -245,6 +260,45 @@ export default function SettlementForm({ entityType, entityData, onSuccess }) {
         <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? "Recording..." : "Record settlement"}
         </Button>
+
+        {/* UPI Pay button — only if other user has a UPI ID */}
+        {otherUserData?.upiId && (
+          <>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">or</span>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-2 border-green-500 text-green-700 hover:bg-green-50 hover:text-green-800"
+              onClick={() => {
+                if (parseFloat(watch("amount") || 0) <= 0) {
+                  toast.error("Please enter a valid amount first");
+                  return;
+                }
+                setUpiModalOpen(true);
+              }}
+            >
+              <Smartphone className="h-4 w-4" />
+              Pay ₹{parseFloat(watch("amount") || Math.abs(entityData.netBalance)).toFixed(2)} via UPI
+            </Button>
+            <UpiPaymentModal
+              open={upiModalOpen}
+              onClose={() => setUpiModalOpen(false)}
+              receiver={otherUserData}
+              amount={parseFloat(watch("amount") || Math.abs(entityData.netBalance))}
+              note={watch("note")}
+              paidByUserId={currentUser?._id}
+              receivedByUserId={entityData?.counterpart?.userId}
+              onSettled={onSuccess}
+            />
+          </>
+        )}
       </form>
     );
   }
@@ -388,7 +442,7 @@ export default function SettlementForm({ entityType, entityData, onSuccess }) {
                 <span className="absolute left-3 top-2.5">₹</span>
                 <Input
                   id="amount"
-                  placeholder="0.00"
+                  placeholder={selectedGroupMemberId ? Math.abs(groupMembers.find(m => m.userId === selectedGroupMemberId)?.netBalance || 0).toFixed(2) : "0.00"}
                   type="number"
                   step="0.01"
                   min="0.01"
@@ -420,6 +474,54 @@ export default function SettlementForm({ entityType, entityData, onSuccess }) {
         >
           {isSubmitting ? "Recording..." : "Record settlement"}
         </Button>
+
+        {/* UPI Pay button for group settlement */}
+        {selectedGroupMemberId &&
+          groupMembers.find((m) => m.userId === selectedGroupMemberId)?.upiId && (
+            <>
+              <div className="relative mt-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">or</span>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full gap-2 border-green-500 text-green-700 hover:bg-green-50 hover:text-green-800 mt-6"
+                onClick={() => {
+                  if (parseFloat(watch("amount") || 0) <= 0) {
+                    toast.error("Please enter a valid amount first");
+                    return;
+                  }
+                  setUpiModalOpen(true);
+                }}
+              >
+                <Smartphone className="h-4 w-4" />
+                Pay ₹{parseFloat(
+                  watch("amount") ||
+                  Math.abs(groupMembers.find((m) => m.userId === selectedGroupMemberId)?.netBalance || 0)
+                ).toFixed(2)}{" "}
+                via UPI
+              </Button>
+              <UpiPaymentModal
+                open={upiModalOpen}
+                onClose={() => setUpiModalOpen(false)}
+                receiver={otherUserData} // Wait, we need to fetch the selected user's data
+                amount={parseFloat(
+                  watch("amount") ||
+                  Math.abs(groupMembers.find((m) => m.userId === selectedGroupMemberId)?.netBalance || 0)
+                )}
+                note={watch("note")}
+                paidByUserId={currentUser?._id}
+                receivedByUserId={selectedGroupMemberId}
+                groupId={entityData.group.id}
+                onSettled={onSuccess}
+              />
+            </>
+          )}
       </form>
     );
   }

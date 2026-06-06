@@ -27,11 +27,13 @@ export function ParticipantSelector({ participants, onParticipantsChange }) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Search for users
-  const { data: searchResults, isLoading } = useConvexQuery(
-    api.users.searchUsers,
-    { query: searchQuery }
-  );
+  // Get friends and filter by search query
+  const { data: friends, isLoading } = useConvexQuery(api.friends.getFriends);
+  
+  const searchResults = friends?.filter(f => 
+    f.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    f.email.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
 
   // Add a participant
   const addParticipant = (user) => {

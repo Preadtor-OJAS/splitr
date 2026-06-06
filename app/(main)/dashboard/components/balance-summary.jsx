@@ -12,7 +12,7 @@ import {
 import { ArrowUpCircle, ArrowDownCircle, Bell, Loader2, Send } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useConvexQuery } from "@/hooks/use-convex-query";
+import { useConvexQuery, useConvexMutation } from "@/hooks/use-convex-query";
 import { api } from "@/convex/_generated/api";
 
 function ReminderButton({ item, currentUser }) {
@@ -20,6 +20,7 @@ function ReminderButton({ item, currentUser }) {
   const [sent, setSent] = useState(false);
   const [open, setOpen] = useState(false);
   const [manualEmail, setManualEmail] = useState("");
+  const sendInAppReminder = useConvexMutation(api.messages.sendReminder);
 
   // Use stored email or fall back to manual input
   const emailToUse = item.email || manualEmail;
@@ -40,19 +41,28 @@ function ReminderButton({ item, currentUser }) {
 
     setSending(true);
     try {
-      const res = await fetch("/api/reminder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          toEmail: emailToUse,
-          toName: item.name,
-          fromName: currentUser?.name || "your friend",
-          amount: item.amount,
-        }),
+      // 1. Send in-app notification (always works, no email needed)
+      await sendInAppReminder.mutate({
+        toUserId: item.userId,
+        amount: item.amount,
+        note: "from the dashboard",
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to send");
+      // 2. Also send email if we have an address
+      if (emailToUse) {
+        const res = await fetch("/api/reminder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            toEmail: emailToUse,
+            toName: item.name,
+            fromName: currentUser?.name || "your friend",
+            amount: item.amount,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) console.warn("Email reminder failed:", data.error);
+      }
 
       setSent(true);
       setOpen(false);

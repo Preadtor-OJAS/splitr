@@ -42,19 +42,53 @@ export const createSettlement = mutation({
       }
     }
 
-    /* ── insert ──────────────────────────────────────────────────────────── */
-    return await ctx.db.insert("settlements", {
+    /* ── insert settlement ───────────────────────────────────────────────── */
+    const settlementId = await ctx.db.insert("settlements", {
       amount: args.amount,
       note: args.note,
-      date: Date.now(), // server‑side timestamp
+      date: Date.now(),
       paidByUserId: args.paidByUserId,
       receivedByUserId: args.receivedByUserId,
       groupId: args.groupId,
       relatedExpenseIds: args.relatedExpenseIds,
       createdBy: caller._id,
     });
+
+    /* ── fetch user names for notification messages ──────────────────────── */
+    const payer = await ctx.db.get(args.paidByUserId);
+    const receiver = await ctx.db.get(args.receivedByUserId);
+    const amountStr = `₹${args.amount.toFixed(2)}`;
+
+    /* ── notify the RECEIVER: "X paid you" ──────────────────────────────── */
+    await ctx.db.insert("notifications", {
+      userId: args.receivedByUserId,
+      type: "settlement_received",
+      title: "Payment Received! 🎉",
+      message: `${payer?.name ?? "Someone"} paid you ${amountStr}${args.note ? ` · ${args.note}` : ""}`,
+      read: false,
+      relatedSettlementId: settlementId,
+      relatedUserId: args.paidByUserId,
+      amount: args.amount,
+      createdAt: Date.now(),
+    });
+
+    /* ── notify the PAYER: confirmation ─────────────────────────────────── */
+    await ctx.db.insert("notifications", {
+      userId: args.paidByUserId,
+      type: "settlement_sent",
+      title: "Payment Recorded ✅",
+      message: `You paid ${receiver?.name ?? "someone"} ${amountStr}${args.note ? ` · ${args.note}` : ""}`,
+      read: false,
+      relatedSettlementId: settlementId,
+      relatedUserId: args.receivedByUserId,
+      amount: args.amount,
+      createdAt: Date.now(),
+    });
+
+    return settlementId;
   },
 });
+
 
 /* ============================================================================
  *  QUERY: getSettlementData
@@ -81,14 +115,14 @@ export const getSettlementData = query({
       const myExpenses = await ctx.db
         .query("expenses")
         .withIndex("by_user_and_group", (q) =>
-          q.eq("paidByUserId", me._id).eq("groupId", undefined)
+          q.eq("paidByUserId", me._id)
         )
         .collect();
 
       const otherUserExpenses = await ctx.db
         .query("expenses")
         .withIndex("by_user_and_group", (q) =>
-          q.eq("paidByUserId", other._id).eq("groupId", undefined)
+          q.eq("paidByUserId", other._id)
         )
         .collect();
 
@@ -124,27 +158,37 @@ export const getSettlementData = query({
       const mySettlements = await ctx.db
         .query("settlements")
         .withIndex("by_user_and_group", (q) =>
-          q.eq("paidByUserId", me._id).eq("groupId", undefined)
+          q.eq("paidByUserId", me._id)
         )
         .collect();
 
       const otherUserSettlements = await ctx.db
         .query("settlements")
         .withIndex("by_user_and_group", (q) =>
-          q.eq("paidByUserId", other._id).eq("groupId", undefined)
+          q.eq("paidByUserId", other._id)
         )
         .collect();
 
       const settlements = [...mySettlements, ...otherUserSettlements];
 
+      let netBalance = owed - owing;
       for (const st of settlements) {
-        if (st.paidByUserId === me._id) {
-          // I paid them ⇒ my owing goes down
-          owing = Math.max(0, owing - st.amount);
-        } else {
-          // They paid me ⇒ their owing goes down
-          owed = Math.max(0, owed - st.amount);
+        if (st.paidByUserId === me._id && st.receivedByUserId === other._id) {
+          // I paid them ⇒ netBalance increases
+          netBalance += st.amount;
+        } else if (st.paidByUserId === other._id && st.receivedByUserId === me._id) {
+          // They paid me ⇒ netBalance decreases
+          netBalance -= st.amount;
         }
+      }
+
+      // Reconstruct owed/owing from final netBalance
+      let finalOwed = 0;
+      let finalOwing = 0;
+      if (netBalance > 0) {
+        finalOwed = netBalance;
+      } else {
+        finalOwing = Math.abs(netBalance);
       }
 
       return {
@@ -155,9 +199,9 @@ export const getSettlementData = query({
           email: other.email,
           imageUrl: other.imageUrl,
         },
-        youAreOwed: owed,
-        youOwe: owing,
-        netBalance: owed - owing, // + => you should receive, − => you should pay
+        youAreOwed: finalOwed,
+        youOwe: finalOwing,
+        netBalance: netBalance, // + => you should receive, − => you should pay
       };
     } else if (args.entityType === "group") {
       /* ──────────────────────────────────────────────────────── group page */
@@ -195,6 +239,13 @@ export const getSettlementData = query({
         }
       }
 
+      // ---------- convert balances to netBalance per member
+      group.members.forEach((m) => {
+        if (m.userId !== me._id) {
+          balances[m.userId].netBalance = balances[m.userId].owed - balances[m.userId].owing;
+        }
+      });
+
       // ---------- apply settlements within the group
       const settlements = await ctx.db
         .query("settlements")
@@ -204,18 +255,26 @@ export const getSettlementData = query({
       for (const st of settlements) {
         // we only care if ONE side is me
         if (st.paidByUserId === me._id && balances[st.receivedByUserId]) {
-          balances[st.receivedByUserId].owing = Math.max(
-            0,
-            balances[st.receivedByUserId].owing - st.amount
-          );
+          // I paid them ⇒ netBalance increases
+          balances[st.receivedByUserId].netBalance += st.amount;
         }
         if (st.receivedByUserId === me._id && balances[st.paidByUserId]) {
-          balances[st.paidByUserId].owed = Math.max(
-            0,
-            balances[st.paidByUserId].owed - st.amount
-          );
+          // They paid me ⇒ netBalance decreases
+          balances[st.paidByUserId].netBalance -= st.amount;
         }
       }
+
+      // ---------- reconstruct owed/owing from netBalance
+      Object.keys(balances).forEach((uid) => {
+        const net = balances[uid].netBalance;
+        if (net > 0) {
+          balances[uid].owed = net;
+          balances[uid].owing = 0;
+        } else {
+          balances[uid].owed = 0;
+          balances[uid].owing = Math.abs(net);
+        }
+      });
 
       // ---------- shape result list
       const members = await Promise.all(
@@ -231,7 +290,7 @@ export const getSettlementData = query({
           imageUrl: m?.imageUrl,
           youAreOwed: owed,
           youOwe: owing,
-          netBalance: owed - owing,
+          netBalance: balances[uid].netBalance,
         };
       });
 

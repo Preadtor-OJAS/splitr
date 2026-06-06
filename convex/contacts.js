@@ -1,7 +1,7 @@
 // convex/contacts.js
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
+import { internal, api } from "./_generated/api";
 
 /* ──────────────────────────────────────────────────────────────────────────
    1. getAllContacts – 1‑to‑1 expense contacts + groups
@@ -11,54 +11,8 @@ export const getAllContacts = query({
     // Use the centralized getCurrentUser instead of duplicating auth logic
     const currentUser = await ctx.runQuery(internal.users.getCurrentUser);
 
-    /* ── personal expenses where YOU are the payer ─────────────────────── */
-    const expensesYouPaid = await ctx.db
-      .query("expenses")
-      .withIndex("by_user_and_group", (q) =>
-        q.eq("paidByUserId", currentUser._id).eq("groupId", undefined)
-      )
-      .collect();
-
-    /* ── personal expenses where YOU are **not** the payer ─────────────── */
-    const expensesNotPaidByYou = (
-      await ctx.db
-        .query("expenses")
-        .withIndex("by_group", (q) => q.eq("groupId", undefined)) // only 1‑to‑1
-        .collect()
-    ).filter(
-      (e) =>
-        e.paidByUserId !== currentUser._id &&
-        e.splits.some((s) => s.userId === currentUser._id)
-    );
-
-    const personalExpenses = [...expensesYouPaid, ...expensesNotPaidByYou];
-
-    /* ── extract unique counterpart IDs ─────────────────────────────────── */
-    const contactIds = new Set();
-    personalExpenses.forEach((exp) => {
-      if (exp.paidByUserId !== currentUser._id)
-        contactIds.add(exp.paidByUserId);
-
-      exp.splits.forEach((s) => {
-        if (s.userId !== currentUser._id) contactIds.add(s.userId);
-      });
-    });
-
-    /* ── fetch user docs ───────────────────────────────────────────────── */
-    const contactUsers = await Promise.all(
-      [...contactIds].map(async (id) => {
-        const u = await ctx.db.get(id);
-        return u
-          ? {
-              id: u._id,
-              name: u.name,
-              email: u.email,
-              imageUrl: u.imageUrl,
-              type: "user",
-            }
-          : null;
-      })
-    );
+    /* ── fetch friends from friend system ───────────────────────────────── */
+    const contactUsers = await ctx.runQuery(api.friends.getFriends);
 
     /* ── groups where current user is a member ─────────────────────────── */
     const userGroups = (await ctx.db.query("groups").collect())
@@ -97,10 +51,18 @@ export const createGroup = mutation({
     const uniqueMembers = new Set(args.members);
     uniqueMembers.add(currentUser._id); // ensure creator
 
-    // Validate that all member users exist
+    // Validate that all member users exist and are friends
     for (const id of uniqueMembers) {
-      if (!(await ctx.db.get(id)))
-        throw new Error(`User with ID ${id} not found`);
+      if (id === currentUser._id) continue;
+      
+      const user = await ctx.db.get(id);
+      if (!user) throw new Error(`User with ID ${id} not found`);
+        
+      const isFriend = await ctx.runQuery(api.friends.checkIsFriend, {
+        userId1: currentUser._id,
+        userId2: id,
+      });
+      if (!isFriend) throw new Error(`You must be friends with ${user.name} to add them to a group`);
     }
 
     return await ctx.db.insert("groups", {

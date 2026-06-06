@@ -4,13 +4,15 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
-import { useConvexQuery } from "@/hooks/use-convex-query";
+import { useConvexQuery, useConvexMutation } from "@/hooks/use-convex-query";
+import { toast } from "sonner";
 import { BarLoader } from "react-spinners";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Users, User } from "lucide-react";
+import { UserMinus, Plus, Users, User } from "lucide-react";
 import { CreateGroupModal } from "./components/create-group-modal";
+import { FriendManager } from "./components/friend-manager";
 
 export default function ContactsPage() {
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
@@ -18,6 +20,7 @@ export default function ContactsPage() {
   const searchParams = useSearchParams();
 
   const { data, isLoading } = useConvexQuery(api.contacts.getAllContacts);
+  const unfriend = useConvexMutation(api.friends.unfriend);
 
   // Check for the createGroup parameter when the component mounts
   useEffect(() => {
@@ -56,12 +59,14 @@ export default function ContactsPage() {
         </Button>
       </div>
 
+      <FriendManager />
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Individual Contacts */}
         <div>
           <h2 className="text-xl font-bold mb-4 flex items-center">
             <User className="mr-2 h-5 w-5" />
-            People
+            Friends
           </h2>
           {users.length === 0 ? (
             <Card>
@@ -89,6 +94,23 @@ export default function ContactsPage() {
                               {user.email}
                             </p>
                           </div>
+                        </div>
+                        <div className="flex gap-2" onClick={(e) => e.preventDefault() /* prevent navigation on button click */}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (window.confirm(`Are you sure you want to unfriend ${user.name}?`)) {
+                                unfriend.mutate({ targetUserId: user.id })
+                                  .then(() => toast.success(`Unfriended ${user.name}`))
+                                  .catch(err => toast.error(err.message));
+                              }
+                            }}
+                          >
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     </CardContent>

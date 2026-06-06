@@ -103,6 +103,46 @@ export const searchUsers = query({
         name: user.name,
         email: user.email,
         imageUrl: user.imageUrl,
+        upiId: user.upiId,
       }));
+  },
+});
+
+// Update UPI ID for the current user
+export const updateUpiId = mutation({
+  args: {
+    upiId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier)
+      )
+      .first();
+
+    if (!user) throw new Error("User not found");
+
+    await ctx.db.patch(user._id, { upiId: args.upiId.trim() });
+    return user._id;
+  },
+});
+
+// Get user by ID (for checking another user's UPI ID)
+export const getUserById = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("User not found");
+    return {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      imageUrl: user.imageUrl,
+      upiId: user.upiId,
+    };
   },
 });

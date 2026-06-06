@@ -47,10 +47,12 @@ export function CreateGroupModal({ isOpen, onClose, onSuccess }) {
 
   const { data: currentUser } = useConvexQuery(api.users.getCurrentUser);
   const createGroup = useConvexMutation(api.contacts.createGroup);
-  const { data: searchResults, isLoading: isSearching } = useConvexQuery(
-    api.users.searchUsers,
-    { query: searchQuery }
-  );
+  const { data: friends, isLoading: isSearching } = useConvexQuery(api.friends.getFriends);
+  
+  const searchResults = friends?.filter(f => 
+    f.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    f.email.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
 
   const {
     register,
