@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Users, CreditCard, ChevronRight, History } from "lucide-react";
+import { PlusCircle, Users, CreditCard, ChevronRight, History, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { ExpenseSummary } from "./components/expense-summary";
 import { BalanceSummary } from "./components/balance-summary";
@@ -63,6 +63,16 @@ export default function Dashboard() {
                 </Link>
               </Button>
             </div>
+          </div>
+          
+          {/* Mobile-only AI Assistant button */}
+          <div className="md:hidden">
+            <Button asChild variant="outline" className="w-full text-purple-600 border-purple-300 hover:bg-purple-50 hover:text-purple-700">
+              <Link href="/ai-assistant">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Ask AI Assistant
+              </Link>
+            </Button>
           </div>
 
           {/* Balance overview cards */}
