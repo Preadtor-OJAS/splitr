@@ -9,9 +9,18 @@ import { BarLoader } from "react-spinners";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Send, MessageCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Send,
+  MessageCircle,
+  MoreVertical,
+  Ban,
+  ShieldOff,
+  AlertTriangle,
+} from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 function formatMsgTime(ts) {
   const d = new Date(ts);
@@ -40,6 +49,18 @@ export default function ChatPage() {
 
   const sendMessage = useConvexMutation(api.messages.sendMessage);
   const markRead = useConvexMutation(api.messages.markConversationRead);
+  const blockUser = useConvexMutation(api.friends.blockUser);
+  const unblockUser = useConvexMutation(api.friends.unblockUser);
+
+  // Block status between me and the other user
+  const { data: blockStatus } = useConvexQuery(
+    api.friends.getBlockStatus,
+    params.id ? { otherUserId: params.id } : "skip"
+  );
+
+  const iBlocked = blockStatus?.iBlockedThem;
+  const theyBlocked = blockStatus?.theyBlockedMe;
+  const canChat = !iBlocked && !theyBlocked;
 
   // Mark messages as read when entering chat
   useEffect(() => {
@@ -68,6 +89,24 @@ export default function ChatPage() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const handleBlock = async () => {
+    try {
+      await blockUser.mutate({ targetUserId: params.id });
+      toast.success(`${otherUser?.name} has been blocked.`);
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
+
+  const handleUnblock = async () => {
+    try {
+      await unblockUser.mutate({ targetUserId: params.id });
+      toast.success(`${otherUser?.name} has been unblocked.`);
+    } catch (e) {
+      toast.error(e.message);
     }
   };
 
@@ -129,8 +168,6 @@ export default function ChatPage() {
           )}
         </div>
 
-        {/* ⋮ Menu */}
-        <div className="relative shrink-0 hidden" ref={menuRef}></div>
       </div>
 
       {/* Block banners */}
