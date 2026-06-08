@@ -50,8 +50,8 @@ export function CreateGroupModal({ isOpen, onClose, onSuccess }) {
   const { data: friends, isLoading: isSearching } = useConvexQuery(api.friends.getFriends);
   
   const searchResults = friends?.filter(f => 
-    f.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    f.email.toLowerCase().includes(searchQuery.toLowerCase())
+    (f.name || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (f.email || "").toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
   const {

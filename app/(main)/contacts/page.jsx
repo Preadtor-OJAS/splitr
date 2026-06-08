@@ -10,7 +10,7 @@ import { BarLoader } from "react-spinners";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { UserMinus, Plus, Users, User } from "lucide-react";
+import { UserMinus, Plus, Users, User, Ban } from "lucide-react";
 import { CreateGroupModal } from "./components/create-group-modal";
 import { FriendManager } from "./components/friend-manager";
 
@@ -21,6 +21,7 @@ export default function ContactsPage() {
 
   const { data, isLoading } = useConvexQuery(api.contacts.getAllContacts);
   const unfriend = useConvexMutation(api.friends.unfriend);
+  const blockUser = useConvexMutation(api.friends.blockUser);
 
   // Check for the createGroup parameter when the component mounts
   useEffect(() => {
@@ -110,6 +111,21 @@ export default function ContactsPage() {
                             }}
                           >
                             <UserMinus className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (window.confirm(`Are you sure you want to block ${user.name}? You will no longer be friends and they won't be able to interact with you.`)) {
+                                blockUser.mutate({ targetUserId: user.id })
+                                  .then(() => toast.success(`Blocked ${user.name}`))
+                                  .catch(err => toast.error(err.message));
+                              }
+                            }}
+                          >
+                            <Ban className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>

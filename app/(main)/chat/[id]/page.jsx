@@ -95,11 +95,70 @@ export default function ChatPage() {
           <AvatarImage src={otherUser?.imageUrl} />
           <AvatarFallback>{otherUser?.name?.charAt(0) ?? "?"}</AvatarFallback>
         </Avatar>
-        <div>
+        <div className="flex-1">
           <p className="font-semibold leading-tight">{otherUser?.name}</p>
-          <p className="text-xs text-muted-foreground">{otherUser?.email}</p>
+          <p className="text-xs text-muted-foreground truncate">{otherUser?.email}</p>
         </div>
+
+        {/* Direct Block / Unblock Action Buttons */}
+        <div className="flex items-center gap-2">
+          {iBlocked ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-green-600 border-green-200 hover:bg-green-50"
+              onClick={handleUnblock}
+            >
+              <ShieldOff className="h-4 w-4 mr-2" />
+              Unblock
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
+              onClick={() => {
+                if (window.confirm(`Are you sure you want to block ${otherUser?.name}?`)) {
+                  handleBlock();
+                }
+              }}
+              title="Block User"
+            >
+              <Ban className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+
+        {/* ⋮ Menu */}
+        <div className="relative shrink-0 hidden" ref={menuRef}></div>
       </div>
+
+      {/* Block banners */}
+      {iBlocked && (
+        <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2.5 mb-3 text-sm">
+          <Ban className="h-4 w-4 text-amber-600 shrink-0" />
+          <span className="text-amber-800 dark:text-amber-300 flex-1">
+            You&apos;ve blocked <strong>{otherUser?.name}</strong>. Unblock to send messages.
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs shrink-0 border-amber-400 text-amber-700 hover:bg-amber-100"
+            onClick={handleUnblock}
+          >
+            Unblock
+          </Button>
+        </div>
+      )}
+
+      {theyBlocked && !iBlocked && (
+        <div className="flex items-center gap-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-4 py-2.5 mb-3 text-sm">
+          <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
+          <span className="text-red-700 dark:text-red-300">
+            You can&apos;t message this person right now.
+          </span>
+        </div>
+      )}
 
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto space-y-3 py-2 pr-1">
@@ -162,18 +221,23 @@ export default function ChatPage() {
       {/* Input bar */}
       <div className="flex items-center gap-2 pt-4 border-t">
         <Input
-          placeholder={`Message ${otherUser?.name?.split(" ")[0] ?? ""}...`}
+          placeholder={
+            !canChat
+              ? "Messaging unavailable"
+              : `Message ${otherUser?.name?.split(" ")[0] ?? ""}...`
+          }
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="flex-1 rounded-full px-4"
-          autoFocus
+          className="flex-1 rounded-full px-4 disabled:opacity-60"
+          autoFocus={canChat}
+          disabled={!canChat}
         />
         <Button
           size="icon"
           className="shrink-0 rounded-full h-10 w-10"
           onClick={handleSend}
-          disabled={!text.trim() || sendMessage.isLoading}
+          disabled={!text.trim() || sendMessage.isLoading || !canChat}
         >
           <Send className="h-4 w-4" />
         </Button>

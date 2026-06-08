@@ -21,6 +21,19 @@ export const sendMessage = mutation({
     const receiver = await ctx.db.get(args.receiverId);
     if (!receiver) throw new Error("Receiver not found");
 
+    // Check if either user has blocked the other
+    const myBlock = await ctx.db
+      .query("blocks")
+      .withIndex("by_both", (q) => q.eq("blockerId", me._id).eq("blockedId", args.receiverId))
+      .first();
+    if (myBlock) throw new Error("You have blocked this user.");
+
+    const theirBlock = await ctx.db
+      .query("blocks")
+      .withIndex("by_both", (q) => q.eq("blockerId", args.receiverId).eq("blockedId", me._id))
+      .first();
+    if (theirBlock) throw new Error("You cannot message this user.");
+
     return await ctx.db.insert("messages", {
       senderId: me._id,
       receiverId: args.receiverId,
