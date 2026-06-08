@@ -184,8 +184,8 @@ export const searchUsersForFriends = query({
     const candidates = allUsers.filter(
       (u) =>
         u._id !== me._id &&
-        (u.name.toLowerCase().includes(queryLower) ||
-          u.email.toLowerCase().includes(queryLower))
+        ((u.name || "").toLowerCase().includes(queryLower) ||
+          (u.email || "").toLowerCase().includes(queryLower))
     );
 
     // Fetch blocks by me and against me
