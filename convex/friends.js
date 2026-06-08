@@ -137,6 +137,36 @@ export const checkIsFriend = query({
 });
 
 /**
+ * Returns the block relationship between the current user and another user.
+ * Used by the chat page to restrict messaging when blocked.
+ */
+export const getBlockStatus = query({
+  args: { otherUserId: v.id("users") },
+  handler: async (ctx, args) => {
+    const me = await ctx.runQuery(internal.users.getCurrentUser);
+
+    const iBlockedThem = await ctx.db
+      .query("blocks")
+      .withIndex("by_both", (q) =>
+        q.eq("blockerId", me._id).eq("blockedId", args.otherUserId)
+      )
+      .first();
+
+    const theyBlockedMe = await ctx.db
+      .query("blocks")
+      .withIndex("by_both", (q) =>
+        q.eq("blockerId", args.otherUserId).eq("blockedId", me._id)
+      )
+      .first();
+
+    return {
+      iBlockedThem: !!iBlockedThem,
+      theyBlockedMe: !!theyBlockedMe,
+    };
+  },
+});
+
+/**
  * Full-text search by name OR email — returns a list of results enriched
  * with friendship/block status so the UI can show Add / Pending / Friends.
  */
@@ -147,25 +177,16 @@ export const searchUsersForFriends = query({
 
     const me = await ctx.runQuery(internal.users.getCurrentUser);
 
-    // Search by name and by email (full-text)
-    const byName = await ctx.db
-      .query("users")
-      .withSearchIndex("search_name", (q) => q.search("name", args.query))
-      .collect();
+    const allUsers = await ctx.db.query("users").collect();
+    const queryLower = args.query.toLowerCase();
 
-    const byEmail = await ctx.db
-      .query("users")
-      .withSearchIndex("search_email", (q) => q.search("email", args.query))
-      .collect();
-
-    // Merge & deduplicate, exclude self
-    const seen = new Set();
-    const candidates = [];
-    for (const u of [...byName, ...byEmail]) {
-      if (u._id === me._id || seen.has(u._id)) continue;
-      seen.add(u._id);
-      candidates.push(u);
-    }
+    // Filter by name or email (substring match)
+    const candidates = allUsers.filter(
+      (u) =>
+        u._id !== me._id &&
+        (u.name.toLowerCase().includes(queryLower) ||
+          u.email.toLowerCase().includes(queryLower))
+    );
 
     // Fetch blocks by me and against me
     const myBlocks = await ctx.db
