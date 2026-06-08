@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { UserPlus, UserCheck, UserX, Search, Ban } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { UserPlus, UserCheck, Search, Ban } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function FriendManager() {
@@ -117,7 +118,7 @@ export function FriendManager() {
               <div className="space-y-2">
                 {isSearching ? (
                   <p className="text-sm text-muted-foreground text-center py-3">Searching…</p>
-                ) : searchResult?.length === 0 ? (
+                ) : !searchResult || searchResult.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-3">
                     No users found for &ldquo;{searchEmail}&rdquo;
                   </p>
@@ -131,7 +132,7 @@ export function FriendManager() {
                         <div className="flex items-center gap-3 min-w-0">
                           <Avatar className="h-9 w-9 shrink-0">
                             <AvatarImage src={user.imageUrl} />
-                            <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                            <AvatarFallback>{user.name?.charAt(0) || "?"}</AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
                             <p className="font-medium text-sm truncate">{user.name}</p>
