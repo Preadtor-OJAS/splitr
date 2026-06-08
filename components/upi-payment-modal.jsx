@@ -79,7 +79,10 @@ export function UpiPaymentModal({
   };
 
   const handleOpenUpi = () => {
-    window.location.href = upiLink;
+    // Use window.open instead of location.href so the OS shows
+    // the full UPI app chooser (GPay, PhonePe, Paytm, etc.)
+    // instead of auto-routing to WhatsApp.
+    window.open(upiLink, "_blank");
   };
 
   const handleMarkSettled = async () => {
