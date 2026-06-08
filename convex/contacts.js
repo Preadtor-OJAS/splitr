@@ -77,3 +77,75 @@ export const createGroup = mutation({
     });
   },
 });
+
+/* ──────────────────────────────────────────────────────────────────────────
+   3. leaveGroup – remove current user from group
+   ──────────────────────────────────────────────────────────────────────── */
+export const leaveGroup = mutation({
+  args: { groupId: v.id("groups") },
+  handler: async (ctx, args) => {
+    const currentUser = await ctx.runQuery(internal.users.getCurrentUser);
+    const group = await ctx.db.get(args.groupId);
+    
+    if (!group) throw new Error("Group not found");
+
+    const newMembers = group.members.filter((m) => m.userId !== currentUser._id);
+
+    if (newMembers.length === 0) {
+      // If empty, delete the group entirely
+      await ctx.db.delete(args.groupId);
+      return { status: "deleted" };
+    }
+
+    // If admin left, make the first remaining member an admin
+    const wasAdmin = group.members.find(m => m.userId === currentUser._id)?.role === "admin";
+    if (wasAdmin && newMembers.length > 0) {
+      if (!newMembers.some(m => m.role === "admin")) {
+        newMembers[0].role = "admin";
+      }
+    }
+
+    await ctx.db.patch(args.groupId, { members: newMembers });
+    return { status: "left" };
+  },
+});
+
+/* ──────────────────────────────────────────────────────────────────────────
+   4. deleteGroup – completely delete group (admin only)
+   ──────────────────────────────────────────────────────────────────────── */
+export const deleteGroup = mutation({
+  args: { groupId: v.id("groups") },
+  handler: async (ctx, args) => {
+    const currentUser = await ctx.runQuery(internal.users.getCurrentUser);
+    const group = await ctx.db.get(args.groupId);
+    
+    if (!group) throw new Error("Group not found");
+
+    const memberInfo = group.members.find((m) => m.userId === currentUser._id);
+    if (!memberInfo || memberInfo.role !== "admin") {
+      throw new Error("Only the group admin can delete the group.");
+    }
+
+    // Delete related expenses
+    const expenses = await ctx.db
+      .query("expenses")
+      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
+      .collect();
+    for (const exp of expenses) {
+      await ctx.db.delete(exp._id);
+    }
+
+    // Delete related settlements
+    const settlements = await ctx.db
+      .query("settlements")
+      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
+      .collect();
+    for (const st of settlements) {
+      await ctx.db.delete(st._id);
+    }
+
+    // Finally, delete the group
+    await ctx.db.delete(args.groupId);
+    return { status: "deleted" };
+  },
+});

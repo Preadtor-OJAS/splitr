@@ -325,11 +325,11 @@ export const sendRequest = mutation({
       }
     }
 
-    // Insert new request (auto-accepting for easier testing)
+    // Insert new request
     await ctx.db.insert("friendships", {
       user1: u1,
       user2: u2,
-      status: "accepted",
+      status: "pending",
       requesterId: me._id,
       updatedAt: Date.now(),
     });
@@ -337,15 +337,15 @@ export const sendRequest = mutation({
     // Notify target
     await ctx.db.insert("notifications", {
       userId: args.targetUserId,
-      type: "friend_accepted",
-      title: "New Friend!",
-      message: `${me.name || "Someone"} added you as a friend.`,
+      type: "friend_request",
+      title: "New Friend Request",
+      message: `${me.name} sent you a friend request.`,
       read: false,
       relatedUserId: me._id,
       createdAt: Date.now(),
     });
 
-    return { status: "accepted" };
+    return { status: "pending" };
   },
 });
 

@@ -84,10 +84,13 @@ export const getGroupExpenses = query({
     const currentUser = await ctx.runQuery(internal.users.getCurrentUser);
 
     const group = await ctx.db.get(groupId);
-    if (!group) throw new Error("Group not found");
+    if (!group) {
+      return null;
+    }
 
-    if (!group.members.some((m) => m.userId === currentUser._id))
-      throw new Error("You are not a member of this group");
+    if (!group.members.some((m) => m.userId === currentUser._id)) {
+      return null;
+    }
 
     const expenses = await ctx.db
       .query("expenses")
