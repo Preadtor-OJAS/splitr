@@ -136,6 +136,82 @@ export const checkIsFriend = query({
   },
 });
 
+/**
+ * Full-text search by name OR email — returns a list of results enriched
+ * with friendship/block status so the UI can show Add / Pending / Friends.
+ */
+export const searchUsersForFriends = query({
+  args: { query: v.string() },
+  handler: async (ctx, args) => {
+    if (args.query.length < 2) return [];
+
+    const me = await ctx.runQuery(internal.users.getCurrentUser);
+
+    // Search by name and by email (full-text)
+    const byName = await ctx.db
+      .query("users")
+      .withSearchIndex("search_name", (q) => q.search("name", args.query))
+      .collect();
+
+    const byEmail = await ctx.db
+      .query("users")
+      .withSearchIndex("search_email", (q) => q.search("email", args.query))
+      .collect();
+
+    // Merge & deduplicate, exclude self
+    const seen = new Set();
+    const candidates = [];
+    for (const u of [...byName, ...byEmail]) {
+      if (u._id === me._id || seen.has(u._id)) continue;
+      seen.add(u._id);
+      candidates.push(u);
+    }
+
+    // Fetch blocks by me and against me
+    const myBlocks = await ctx.db
+      .query("blocks")
+      .withIndex("by_blocker", (q) => q.eq("blockerId", me._id))
+      .collect();
+    const blockedByMe = new Set(myBlocks.map((b) => b.blockedId));
+
+    const blocksAgainstMe = await ctx.db
+      .query("blocks")
+      .withIndex("by_blocked", (q) => q.eq("blockedId", me._id))
+      .collect();
+    const blockedMe = new Set(blocksAgainstMe.map((b) => b.blockerId));
+
+    // Fetch my friendships
+    const fs1 = await ctx.db
+      .query("friendships")
+      .withIndex("by_user1", (q) => q.eq("user1", me._id))
+      .collect();
+    const fs2 = await ctx.db
+      .query("friendships")
+      .withIndex("by_user2", (q) => q.eq("user2", me._id))
+      .collect();
+
+    const friendshipMap = new Map();
+    for (const f of [...fs1, ...fs2]) {
+      const otherId = f.user1 === me._id ? f.user2 : f.user1;
+      friendshipMap.set(otherId, f);
+    }
+
+    return candidates
+      .filter((u) => !blockedMe.has(u._id)) // hide users who blocked me
+      .map((u) => ({
+        id: u._id,
+        name: u.name,
+        email: u.email,
+        imageUrl: u.imageUrl,
+        isBlocked: blockedByMe.has(u._id),
+        status: friendshipMap.has(u._id)
+          ? friendshipMap.get(u._id).status
+          : "none",
+        requesterId: friendshipMap.get(u._id)?.requesterId,
+      }));
+  },
+});
+
 // Helper to search a user by email, but respecting blocks and friends
 export const searchUserByEmail = query({
   args: { email: v.string() },

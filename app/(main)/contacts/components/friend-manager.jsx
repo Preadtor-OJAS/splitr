@@ -16,8 +16,8 @@ export function FriendManager() {
   const [activeTab, setActiveTab] = useState("add");
 
   const { data: searchResult, isLoading: isSearching } = useConvexQuery(
-    api.friends.searchUserByEmail,
-    searchEmail ? { email: searchEmail } : "skip"
+    api.friends.searchUsersForFriends,
+    searchEmail.length >= 2 ? { query: searchEmail } : "skip"
   );
 
   const { data: pendingRequests } = useConvexQuery(api.friends.getPendingRequests);
@@ -28,11 +28,6 @@ export function FriendManager() {
   const declineRequest = useConvexMutation(api.friends.declineRequest);
   const blockUser = useConvexMutation(api.friends.blockUser);
   const unblockUser = useConvexMutation(api.friends.unblockUser);
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (!searchEmail) return;
-  };
 
   const handleSendRequest = async (userId) => {
     try {
@@ -101,61 +96,74 @@ export function FriendManager() {
           </TabsList>
 
           <TabsContent value="add" className="space-y-4">
-            <form onSubmit={handleSearch} className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="email"
-                  placeholder="Enter friend's email..."
-                  className="pl-8"
-                  value={searchEmail}
-                  onChange={(e) => setSearchEmail(e.target.value)}
-                />
-              </div>
-            </form>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search by name or email..."
+                className="pl-8"
+                value={searchEmail}
+                onChange={(e) => setSearchEmail(e.target.value)}
+              />
+            </div>
 
-            {searchEmail && (
-              <div className="pt-2">
+            {searchEmail.length > 0 && searchEmail.length < 2 && (
+              <p className="text-xs text-muted-foreground text-center py-2">
+                Type at least 2 characters to search…
+              </p>
+            )}
+
+            {searchEmail.length >= 2 && (
+              <div className="space-y-2">
                 {isSearching ? (
-                  <p className="text-sm text-muted-foreground">Searching...</p>
-                ) : searchResult === null ? (
-                  <p className="text-sm text-muted-foreground">User not found.</p>
-                ) : searchResult.isSelf ? (
-                  <p className="text-sm text-amber-600 font-medium">You cannot add yourself.</p>
-                ) : searchResult.isBlocked ? (
-                  <p className="text-sm text-red-500 font-medium">You have blocked this user.</p>
+                  <p className="text-sm text-muted-foreground text-center py-3">Searching…</p>
+                ) : searchResult?.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-3">
+                    No users found for &ldquo;{searchEmail}&rdquo;
+                  </p>
                 ) : (
-                  <div className="flex items-center justify-between bg-muted/50 p-3 rounded-md">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={searchResult.imageUrl} />
-                        <AvatarFallback>{searchResult.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{searchResult.name}</p>
-                        <p className="text-sm text-muted-foreground">{searchResult.email}</p>
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {searchResult.map((user) => (
+                      <div
+                        key={user.id}
+                        className="flex items-center justify-between bg-muted/40 hover:bg-muted/70 transition-colors p-3 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar className="h-9 w-9 shrink-0">
+                            <AvatarImage src={user.imageUrl} />
+                            <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">{user.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 ml-2">
+                          {user.isBlocked ? (
+                            <span className="text-xs text-red-500 font-medium">Blocked</span>
+                          ) : user.status === "accepted" ? (
+                            <Button variant="secondary" size="sm" disabled>
+                              <UserCheck className="mr-1.5 h-3.5 w-3.5" /> Friends
+                            </Button>
+                          ) : user.status === "pending" ? (
+                            <Button variant="secondary" size="sm" disabled>
+                              Pending
+                            </Button>
+                          ) : (
+                            <Button size="sm" onClick={() => handleSendRequest(user.id)}>
+                              <UserPlus className="mr-1.5 h-3.5 w-3.5" /> Add
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div>
-                      {searchResult.status === "accepted" ? (
-                        <Button variant="secondary" size="sm" disabled>
-                          <UserCheck className="mr-2 h-4 w-4" /> Friends
-                        </Button>
-                      ) : searchResult.status === "pending" ? (
-                        <Button variant="secondary" size="sm" disabled>
-                          Pending
-                        </Button>
-                      ) : (
-                        <Button size="sm" onClick={() => handleSendRequest(searchResult.id)}>
-                          <UserPlus className="mr-2 h-4 w-4" /> Add
-                        </Button>
-                      )}
-                    </div>
+                    ))}
                   </div>
                 )}
               </div>
             )}
           </TabsContent>
+
 
           <TabsContent value="requests" className="space-y-4">
             {pendingRequests?.incoming?.length === 0 && pendingRequests?.outgoing?.length === 0 ? (

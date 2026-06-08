@@ -13,12 +13,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Smartphone, CheckCircle2 } from "lucide-react";
+import { Smartphone, CheckCircle2, Sun, Moon } from "lucide-react";
 import { toast } from "sonner";
+import { useTheme } from "next-themes";
 
 export function UpiSettingsModal({ open, onClose }) {
   const { data: currentUser } = useConvexQuery(api.users.getCurrentUser);
   const updateUpiId = useConvexMutation(api.users.updateUpiId);
+  const { theme, setTheme } = useTheme();
 
   const [upiId, setUpiId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -31,9 +33,7 @@ export function UpiSettingsModal({ open, onClose }) {
       toast.error("Please enter your UPI ID");
       return;
     }
-    // Strict UPI ID format validation
     const upiRegex = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
-    
     if (!upiRegex.test(trimmed)) {
       toast.error("Invalid UPI ID format. Ensure there are no spaces and it matches the pattern handle@bank");
       return;
@@ -50,28 +50,75 @@ export function UpiSettingsModal({ open, onClose }) {
     }
   };
 
+  const isDark = theme === "dark";
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <div className="bg-green-100 p-1.5 rounded-full">
+            <div className="bg-green-100 dark:bg-green-900 p-1.5 rounded-full">
               <Smartphone className="h-4 w-4 text-green-600" />
             </div>
-            Your UPI ID
+            Settings
           </DialogTitle>
           <DialogDescription>
-            Save your UPI ID so others can pay you directly via any UPI app.
+            Manage your UPI ID and app preferences.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-5 py-2">
+
+          {/* ── Theme toggle ── */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Appearance</Label>
+            <div className="flex items-center justify-between border rounded-lg px-4 py-3">
+              <div className="flex items-center gap-2">
+                {isDark ? (
+                  <Moon className="h-4 w-4 text-indigo-400" />
+                ) : (
+                  <Sun className="h-4 w-4 text-yellow-500" />
+                )}
+                <span className="text-sm font-medium">
+                  {isDark ? "Dark mode" : "Light mode"}
+                </span>
+              </div>
+              {/* Toggle pill */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isDark}
+                onClick={() => setTheme(isDark ? "light" : "dark")}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  isDark ? "bg-indigo-500" : "bg-muted-foreground/30"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 rounded-full bg-white shadow-md transform transition-transform ${
+                    isDark ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">UPI</span>
+            </div>
+          </div>
+
+          {/* ── UPI ID ── */}
           {existingUpiId && (
-            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg px-3 py-2">
               <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
               <div>
-                <p className="text-xs text-green-700 font-medium">Current UPI ID</p>
-                <p className="font-mono text-sm text-green-800">{existingUpiId}</p>
+                <p className="text-xs text-green-700 dark:text-green-400 font-medium">Current UPI ID</p>
+                <p className="font-mono text-sm text-green-800 dark:text-green-300">{existingUpiId}</p>
               </div>
             </div>
           )}
