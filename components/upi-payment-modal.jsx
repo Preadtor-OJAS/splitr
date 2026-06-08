@@ -10,7 +10,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Smartphone,
   QrCode,
@@ -25,10 +24,11 @@ import { api } from "@/convex/_generated/api";
 import { useConvexMutation, useConvexQuery } from "@/hooks/use-convex-query";
 
 /**
- * Generates a UPI payment deep link.
- * upi://pay?pa=<VPA>&pn=<Name>&am=<Amount>&cu=INR&tn=<Note>
+ * Builds a UPI deep link for a given app scheme.
+ * Android: upi://pay?...
+ * iOS apps each have their own scheme (tez://, phonepe://, etc.)
  */
-function buildUpiLink({ upiId, name, amount, note }) {
+function buildUpiLink({ scheme, upiId, name, amount, note }) {
   const params = new URLSearchParams({
     pa: upiId,
     pn: name,
@@ -36,8 +36,42 @@ function buildUpiLink({ upiId, name, amount, note }) {
     cu: "INR",
     ...(note ? { tn: note } : {}),
   });
-  return `upi://pay?${params.toString()}`;
+  return `${scheme}?${params.toString()}`;
 }
+
+/** Detects iOS (iPhone/iPad/iPod) */
+function isIOS() {
+  if (typeof navigator === "undefined") return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent);
+}
+
+/** Per-app deep link schemes for iOS */
+const IOS_UPI_APPS = [
+  {
+    name: "GPay",
+    scheme: "tez://upi/pay",
+    bg: "#4285F4",
+    emoji: "🟦",
+  },
+  {
+    name: "PhonePe",
+    scheme: "phonepe://pay",
+    bg: "#5F259F",
+    emoji: "🟣",
+  },
+  {
+    name: "Paytm",
+    scheme: "paytmmp://pay",
+    bg: "#00BAF2",
+    emoji: "🔵",
+  },
+  {
+    name: "BHIM",
+    scheme: "bhim://pay",
+    bg: "#FF6B2C",
+    emoji: "🟠",
+  },
+];
 
 export function UpiPaymentModal({
   open,
@@ -60,7 +94,9 @@ export function UpiPaymentModal({
 
   if (!receiver?.upiId) return null;
 
-  const upiLink = buildUpiLink({
+  // Generic Android deep link (triggers OS app chooser)
+  const androidUpiLink = buildUpiLink({
+    scheme: "upi://pay",
     upiId: receiver.upiId,
     name: receiver.name,
     amount,
@@ -78,11 +114,16 @@ export function UpiPaymentModal({
     }
   };
 
-  const handleOpenUpi = () => {
-    // Use window.open instead of location.href so the OS shows
-    // the full UPI app chooser (GPay, PhonePe, Paytm, etc.)
-    // instead of auto-routing to WhatsApp.
-    window.open(upiLink, "_blank");
+  /**
+   * Opens a UPI deep link.
+   * - iOS: use the app-specific scheme passed in
+   * - Android: use the generic upi:// scheme (triggers OS app chooser)
+   */
+  const handleOpenApp = (link) => {
+    // window.location.href works best for deep links on both platforms.
+    // On iOS we always pass a specific app scheme, so this works correctly.
+    // On Android the generic upi:// triggers the native app chooser.
+    window.location.href = link;
   };
 
   const handleMarkSettled = async () => {
@@ -108,6 +149,8 @@ export function UpiPaymentModal({
       setSettling(false);
     }
   };
+
+  const onIOS = isIOS();
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -161,7 +204,7 @@ export function UpiPaymentModal({
             </div>
             <div className="p-4 bg-white border-2 border-border rounded-2xl shadow-sm">
               <QRCodeSVG
-                value={upiLink}
+                value={androidUpiLink}
                 size={180}
                 bgColor="#ffffff"
                 fgColor="#111827"
@@ -169,23 +212,48 @@ export function UpiPaymentModal({
                 includeMargin={false}
               />
             </div>
-            <div className="flex gap-2 flex-wrap justify-center">
-              {["GPay", "PhonePe", "Paytm", "BHIM"].map((app) => (
-                <Badge key={app} variant="outline" className="text-xs">
-                  {app}
-                </Badge>
-              ))}
-            </div>
           </div>
 
-          {/* Open UPI app (mobile deep link) */}
-          <Button
-            className="w-full bg-green-600 hover:bg-green-700 text-white gap-2"
-            onClick={handleOpenUpi}
-          >
-            <ExternalLink className="h-4 w-4" />
-            Open UPI App
-          </Button>
+          {/* --- iOS: individual app buttons --- */}
+          {onIOS ? (
+            <div className="space-y-2">
+              <p className="text-xs text-center text-muted-foreground font-medium uppercase tracking-wide">
+                Open with
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {IOS_UPI_APPS.map((app) => {
+                  const link = buildUpiLink({
+                    scheme: app.scheme,
+                    upiId: receiver.upiId,
+                    name: receiver.name,
+                    amount,
+                    note,
+                  });
+                  return (
+                    <Button
+                      key={app.name}
+                      type="button"
+                      variant="outline"
+                      className="gap-2 h-11"
+                      onClick={() => handleOpenApp(link)}
+                    >
+                      <span>{app.emoji}</span>
+                      {app.name}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            /* --- Android: single button, OS shows app chooser --- */
+            <Button
+              className="w-full bg-green-600 hover:bg-green-700 text-white gap-2"
+              onClick={() => handleOpenApp(androidUpiLink)}
+            >
+              <ExternalLink className="h-4 w-4" />
+              Open UPI App
+            </Button>
+          )}
 
           {/* Divider */}
           <div className="relative">
@@ -222,7 +290,7 @@ export function UpiPaymentModal({
           )}
 
           <p className="text-xs text-center text-muted-foreground">
-            "Mark as Settled" records the payment and notifies{" "}
+            &ldquo;Mark as Settled&rdquo; records the payment and notifies{" "}
             {receiver.name} instantly.
           </p>
         </div>
