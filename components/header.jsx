@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Button } from "./ui/button";
-import { LayoutDashboard, Sparkles, Smartphone } from "lucide-react";
+import { LayoutDashboard, Sparkles, Smartphone, Users, Sun, Moon } from "lucide-react";
 import Link from "next/link";
 import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { useStoreUser } from "@/hooks/use-store-user";
@@ -13,11 +13,13 @@ import { usePathname } from "next/navigation";
 import { UpiSettingsModal } from "@/components/upi-settings-modal";
 import { NotificationBell } from "@/components/notification-bell";
 import { ChatInboxButton } from "@/components/chat-inbox-button";
+import { useTheme } from "next-themes";
 
 export default function Header() {
   const { isLoading } = useStoreUser();
   const path = usePathname();
   const [upiModalOpen, setUpiModalOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   return (
     <>
@@ -65,6 +67,19 @@ export default function Header() {
               </Button>
             </Link>
 
+            <Link href="/contacts">
+              <Button
+                variant="outline"
+                className="hidden md:inline-flex items-center gap-2 hover:text-green-600 hover:border-green-600 transition"
+              >
+                <Users className="h-4 w-4" />
+                Contacts
+              </Button>
+              <Button variant="ghost" className="md:hidden w-10 h-10 p-0">
+                <Users className="h-4 w-4" />
+              </Button>
+            </Link>
+
             <Link href="/ai-assistant">
               <Button
                 variant="outline"
@@ -82,6 +97,20 @@ export default function Header() {
             <div className="flex items-center gap-1">
               <ChatInboxButton />
               <NotificationBell />
+              {/* Dark / Light toggle */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="w-10 h-10 p-0"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {theme === "dark" ? (
+                  <Sun className="h-4 w-4 text-yellow-400" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
             </div>
 
             <Button
