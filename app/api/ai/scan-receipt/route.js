@@ -1,7 +1,7 @@
-import Groq from "groq-sdk";
 import { NextResponse } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export async function POST(req) {
   try {
@@ -11,9 +11,9 @@ export async function POST(req) {
       return NextResponse.json({ error: "No image provided" }, { status: 400 });
     }
 
-    if (!process.env.GROQ_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
-        { error: "GROQ_API_KEY not configured in .env.local" },
+        { error: "GEMINI_API_KEY not configured in .env.local" },
         { status: 500 }
       );
     }
@@ -31,30 +31,19 @@ export async function POST(req) {
 
 If you cannot read the receipt clearly, still return your best guess. Always return valid JSON only.`;
 
-    const completion = await groq.chat.completions.create({
-      model: "openai/gpt-oss-120b",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:${mimeType || "image/jpeg"};base64,${imageBase64}`,
-              },
-            },
-            {
-              type: "text",
-              text: prompt,
-            },
-          ],
-        },
-      ],
-      max_tokens: 1024,
-      temperature: 0.1,
-    });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    const responseText = completion.choices[0]?.message?.content?.trim() ?? "";
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          data: imageBase64,
+          mimeType: mimeType || "image/jpeg",
+        },
+      },
+      prompt,
+    ]);
+
+    const responseText = result.response.text().trim();
 
     // Strip potential markdown fences
     const cleaned = responseText
