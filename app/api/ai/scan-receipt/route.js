@@ -31,7 +31,7 @@ export async function POST(req) {
 
 If you cannot read the receipt clearly, still return your best guess. Always return valid JSON only.`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
 
     const result = await model.generateContent([
       {
