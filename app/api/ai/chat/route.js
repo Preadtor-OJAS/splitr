@@ -42,7 +42,7 @@ Be concise, friendly, and practical. Use emojis occasionally to be engaging. If 
     ];
 
     const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
       messages: chatMessages,
       max_tokens: 1024,
       temperature: 0.7,
